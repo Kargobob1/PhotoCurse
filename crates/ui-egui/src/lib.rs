@@ -15,6 +15,7 @@ macro_rules! tl {
 }
 
 pub mod actions;
+pub mod adaptive_accent;
 pub mod adjust_dialog;
 pub mod adjust_editors;
 pub mod adjust_preview;
@@ -96,6 +97,7 @@ pub mod flick_pan;
 mod font_preview;
 pub mod frame_tool;
 pub mod gallery_ui;
+pub mod glass_ui;
 pub mod gpu_canvas;
 pub mod gpu_status;
 pub mod gradient_ui;
@@ -1823,8 +1825,22 @@ impl eframe::App for PhotocraftApp {
         // system title bar this is where the document name lives, as the in-app title is hidden.
         panels::sync_window_title(self, &ctx);
         let chrome = !self.ui.view.hides_chrome();
+        adaptive_accent::update(self, &ctx);
+        let t = theme::Tokens::get(&ctx);
+        let pasteboard = prefs_ui::pasteboard_color(self);
+        let backdrop = if chrome { pasteboard.unwrap_or(t.canvas) } else { egui::Color32::BLACK };
+        // Glass themes: the shell panels are islands over one backdrop, fading while the canvas
+        // is worked on.
+        let glass = chrome && t.glass;
+        if glass {
+            glass_ui::backdrop(self, ui, backdrop, pasteboard.is_some());
+        }
         if chrome && self.ui.panels.menu_bar {
             panels::title_bar(self, ui);
+        }
+        let opacity = ui.opacity();
+        if glass {
+            ui.multiply_opacity(glass_ui::island_opacity(self, &ctx));
         }
         if chrome && self.ui.panels.options_bar {
             panels::options_bar(self, ui);
@@ -1838,11 +1854,11 @@ impl eframe::App for PhotocraftApp {
         if chrome && self.ui.panels.dock {
             panels::right_dock(self, ui);
         }
-        let t = theme::Tokens::get(&ctx);
-        let backdrop = if chrome { prefs_ui::pasteboard_color(self).unwrap_or(t.canvas) } else { egui::Color32::BLACK };
-        egui::CentralPanel::default().frame(egui::Frame::NONE.fill(backdrop)).show(ui, |ui| {
+        ui.set_opacity(opacity);
+        let central = egui::CentralPanel::default().frame(egui::Frame::NONE.fill(backdrop)).show(ui, |ui| {
             canvas::document_area(self, ui);
         });
+        glass_ui::remember_canvas(&ctx, central.response.rect);
         panels::properties_window(self, &ctx);
         brush_panel::window(self, &ctx);
         preset_panels::windows(self, &ctx);

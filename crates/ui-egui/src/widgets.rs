@@ -61,6 +61,79 @@ pub fn surface(ui: &Ui, rect: Rect, fill: Color32, raised: bool) {
     }
 }
 
+/// Gap (points) between a glass island and the window edge or its neighbour.
+pub const GLASS_GAP: i8 = 8;
+
+/// A glass island (Glass themes): the translucent `card` fill, a light rim and a soft shadow.
+pub fn glass_frame(t: &Tokens) -> egui::Frame {
+    egui::Frame::NONE
+        .fill(t.card)
+        .stroke(Stroke::new(1.0, t.glass_rim))
+        .corner_radius(CornerRadius::same(t.radius_lg.clamp(0.0, 255.0) as u8))
+        .shadow(egui::Shadow { offset: [0, 6], blur: 24, spread: 0, color: t.shadow })
+}
+
+/// A shell panel's frame: a glass island inset by [`GLASS_GAP`] in Glass themes (`outer` says
+/// which sides get the gap), otherwise the flat `chrome` fill.
+pub fn chrome_frame(t: &Tokens, inner: egui::Margin, outer: egui::Margin) -> egui::Frame {
+    if t.glass { glass_frame(t).inner_margin(inner).outer_margin(outer) } else { egui::Frame::NONE.fill(t.chrome).inner_margin(inner) }
+}
+
+/// The extra panel size [`chrome_frame`] needs for its gaps (zero outside Glass themes).
+pub fn chrome_gap(t: &Tokens, sides: i8) -> f32 {
+    if t.glass { f32::from(GLASS_GAP) * f32::from(sides) } else { 0.0 }
+}
+
+/// Reserve the spot for a glass island's top highlight, under the contents drawn next; finish
+/// it with [`glass_sheen_end`] once they are laid out. `None` outside Glass themes.
+pub fn glass_sheen_begin(ui: &Ui) -> Option<egui::layers::ShapeIdx> {
+    Tokens::get(ui.ctx()).glass.then(|| ui.painter().add(egui::Shape::Noop))
+}
+
+/// Paint the highlight reserved by [`glass_sheen_begin`] across the contents laid out so far,
+/// widened by the island's inner `margin`.
+pub fn glass_sheen_end(ui: &Ui, idx: Option<egui::layers::ShapeIdx>, margin: egui::Margin) {
+    let Some(idx) = idx else { return };
+    if let Some(mesh) = sheen_mesh(&Tokens::get(ui.ctx()), ui.min_rect(), margin) {
+        ui.painter().set(idx, mesh);
+    }
+}
+
+/// Paint a shell panel's glass highlight at once: a panel's content rect is known up front.
+pub fn glass_sheen_panel(ui: &Ui, margin: egui::Margin) {
+    let t = Tokens::get(ui.ctx());
+    if t.glass
+        && let Some(mesh) = sheen_mesh(&t, ui.max_rect(), margin)
+    {
+        ui.painter().add(mesh);
+    }
+}
+
+/// The highlight along the top of a glass island around `content` (inside `margin`), fading
+/// downwards from its top edge.
+fn sheen_mesh(t: &Tokens, content: Rect, margin: egui::Margin) -> Option<egui::Mesh> {
+    if t.glass_sheen.a() == 0 || !content.is_finite() {
+        return None;
+    }
+    let outer = Rect::from_min_max(
+        pos2(content.left() - f32::from(margin.left), content.top() - f32::from(margin.top)),
+        pos2(content.right() + f32::from(margin.right), content.bottom() + f32::from(margin.bottom)),
+    );
+    let inset = (t.radius_lg * 0.6).min(outer.width() / 2.0);
+    let r = Rect::from_min_max(pos2(outer.left() + inset, outer.top() + 1.0), pos2(outer.right() - inset, outer.top() + (outer.height() * 0.5).min(64.0)));
+    if !(r.width() > 0.0 && r.height() > 0.0) {
+        return None;
+    }
+    let mut mesh = egui::Mesh::default();
+    mesh.colored_vertex(r.left_top(), t.glass_sheen);
+    mesh.colored_vertex(r.right_top(), t.glass_sheen);
+    mesh.colored_vertex(r.right_bottom(), Color32::TRANSPARENT);
+    mesh.colored_vertex(r.left_bottom(), Color32::TRANSPARENT);
+    mesh.add_triangle(0, 1, 2);
+    mesh.add_triangle(0, 2, 3);
+    Some(mesh)
+}
+
 /// A dock card: rounded container with a header of pill tabs and optional trailing actions.
 /// Returns the index of the selected tab.
 pub fn card(ui: &mut Ui, id: &str, tabs: &[&str], selected: &mut usize, body: impl FnOnce(&mut Ui, usize)) {
@@ -128,14 +201,16 @@ pub fn card_ex(
         return pro_panel(ui, id, tabs, selected, collapsed, reorderable, body);
     }
     let m = body_margin(false);
-    let frame = egui::Frame::NONE
-        .fill(t.card)
-        .stroke(Stroke::new(1.0, t.card_border))
-        .corner_radius(CornerRadius::same(t.radius as u8))
-        .inner_margin(egui::Margin { bottom: if collapsed { 6 } else { m.bottom }, ..m });
+    let inner = egui::Margin { bottom: if collapsed { 6 } else { m.bottom }, ..m };
+    let frame = if t.glass {
+        glass_frame(&t).inner_margin(inner)
+    } else {
+        egui::Frame::NONE.fill(t.card).stroke(Stroke::new(1.0, t.card_border)).corner_radius(CornerRadius::same(t.radius as u8)).inner_margin(inner)
+    };
     let out = frame
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
+            let sheen = glass_sheen_begin(ui);
             // Registered before the tabs so they keep their clicks; drags fall through to it.
             let strip_rect = Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), 22.0));
             let strip = ui.interact(strip_rect, ui.id().with((id, "strip")), Sense::click_and_drag());
@@ -150,6 +225,7 @@ pub fn card_ex(
                 ui.add_space(6.0);
                 body(ui, *selected);
             }
+            glass_sheen_end(ui, sheen, inner);
             CardResponse::new(strip, menu, tabs_out)
         })
         .inner;

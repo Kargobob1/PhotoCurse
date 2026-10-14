@@ -55,10 +55,14 @@ pub enum ThemeKind {
     SoftDark,
     /// A low-contrast light theme: pale violet-grey surfaces, softened dark text and a periwinkle accent.
     SoftLight,
+    /// Floating translucent panels over a deep blue-black backdrop (Studio layout).
+    Glass,
+    /// Floating translucent panels over a pale blue-grey backdrop (Studio layout).
+    GlassLight,
 }
 
 impl ThemeKind {
-    pub const ALL: [ThemeKind; 14] = [
+    pub const ALL: [ThemeKind; 16] = [
         ThemeKind::Pro,
         ThemeKind::ProMedium,
         ThemeKind::ProLightGray,
@@ -73,6 +77,8 @@ impl ThemeKind {
         ThemeKind::BreezeDark,
         ThemeKind::SoftDark,
         ThemeKind::SoftLight,
+        ThemeKind::Glass,
+        ThemeKind::GlassLight,
     ];
     pub fn label(self) -> &'static str {
         match self {
@@ -90,6 +96,8 @@ impl ThemeKind {
             ThemeKind::BreezeDark => "Breeze Dark",
             ThemeKind::SoftDark => "Soft Dark",
             ThemeKind::SoftLight => "Soft Light",
+            ThemeKind::Glass => "Glass (Dark)",
+            ThemeKind::GlassLight => "Glass (Light)",
         }
     }
     /// The canonical name: `ui.set {theme}` accepts it and the Window › Theme commands are
@@ -110,6 +118,8 @@ impl ThemeKind {
             ThemeKind::BreezeDark => "breezeDark",
             ThemeKind::SoftDark => "softDark",
             ThemeKind::SoftLight => "softLight",
+            ThemeKind::Glass => "glass",
+            ThemeKind::GlassLight => "glassLight",
         }
     }
     /// Photoshop-grammar layout (tab strips, flat panels): the four Pro brightness levels.
@@ -136,6 +146,8 @@ impl ThemeKind {
             "breezedark" | "kdedark" | "plasmadark" => Some(ThemeKind::BreezeDark),
             "softdark" => Some(ThemeKind::SoftDark),
             "softlight" => Some(ThemeKind::SoftLight),
+            "glass" | "glassdark" => Some(ThemeKind::Glass),
+            "glasslight" => Some(ThemeKind::GlassLight),
             _ => None,
         }
     }
@@ -197,6 +209,13 @@ pub struct Tokens {
     pub caption_close_text: Color32,
     /// Dims the main window behind a modal that takes all input (Camera Raw).
     pub scrim: Color32,
+    /// Glass layout: the toolbar, options bar, dock cards and status bar float as rounded
+    /// translucent islands over the canvas backdrop (`card` is their translucent fill).
+    pub glass: bool,
+    /// The 1-point light edge around a glass island.
+    pub glass_rim: Color32,
+    /// The highlight at the top of a glass island, fading downwards.
+    pub glass_sheen: Color32,
 }
 
 impl Tokens {
@@ -319,6 +338,9 @@ impl Tokens {
                 caption_close: Color32::from_rgb(196, 43, 28),
                 caption_close_text: Color32::WHITE,
                 scrim: Color32::from_black_alpha(110),
+                glass: false,
+                glass_rim: Color32::TRANSPARENT,
+                glass_sheen: Color32::TRANSPARENT,
             },
             ThemeKind::Studio => Tokens {
                 kind,
@@ -359,6 +381,9 @@ impl Tokens {
                 caption_close: Color32::from_rgb(196, 43, 28),
                 caption_close_text: Color32::WHITE,
                 scrim: Color32::from_black_alpha(110),
+                glass: false,
+                glass_rim: Color32::TRANSPARENT,
+                glass_sheen: Color32::TRANSPARENT,
             },
             ThemeKind::StudioLight => Tokens {
                 kind,
@@ -399,6 +424,9 @@ impl Tokens {
                 caption_close: Color32::from_rgb(196, 43, 28),
                 caption_close_text: Color32::WHITE,
                 scrim: Color32::from_black_alpha(110),
+                glass: false,
+                glass_rim: Color32::TRANSPARENT,
+                glass_sheen: Color32::TRANSPARENT,
             },
             ThemeKind::Classic => Tokens {
                 kind,
@@ -439,6 +467,9 @@ impl Tokens {
                 caption_close: Color32::from_rgb(196, 43, 28),
                 caption_close_text: Color32::WHITE,
                 scrim: Color32::from_black_alpha(110),
+                glass: false,
+                glass_rim: Color32::TRANSPARENT,
+                glass_sheen: Color32::TRANSPARENT,
             },
             // libadwaita's named colours (window, sidebar, card, view, accent, destructive) and
             // radii (6 px buttons, 12 px cards), mapped onto the Studio layout. GNOME's close
@@ -482,6 +513,9 @@ impl Tokens {
                 caption_close: Color32::from_rgb(212, 212, 216),
                 caption_close_text: Color32::from_rgb(50, 50, 54),
                 scrim: Color32::from_black_alpha(110),
+                glass: false,
+                glass_rim: Color32::TRANSPARENT,
+                glass_sheen: Color32::TRANSPARENT,
             },
             ThemeKind::AdwaitaDark => Tokens {
                 kind,
@@ -522,6 +556,9 @@ impl Tokens {
                 caption_close: Color32::from_rgb(72, 72, 76),
                 caption_close_text: Color32::WHITE,
                 scrim: Color32::from_black_alpha(110),
+                glass: false,
+                glass_rim: Color32::TRANSPARENT,
+                glass_sheen: Color32::TRANSPARENT,
             },
             // The light counterpart, adapted the same way: our own values, chosen a few levels
             // from Breeze Light's surfaces so the app blends into a Plasma desktop without being a
@@ -568,6 +605,9 @@ impl Tokens {
                 caption_close: Color32::from_rgb(213, 51, 60),
                 caption_close_text: Color32::WHITE,
                 scrim: Color32::from_black_alpha(110),
+                glass: false,
+                glass_rim: Color32::TRANSPARENT,
+                glass_sheen: Color32::TRANSPARENT,
             },
             // An adaptation of KDE Plasma's Breeze Dark look on the Studio layout, not a copy: our
             // own values, chosen a few levels from Breeze Dark's surfaces (the darkest canvas, then
@@ -618,6 +658,9 @@ impl Tokens {
                 caption_close: Color32::from_rgb(213, 51, 60),
                 caption_close_text: Color32::WHITE,
                 scrim: Color32::from_black_alpha(110),
+                glass: false,
+                glass_rim: Color32::TRANSPARENT,
+                glass_sheen: Color32::TRANSPARENT,
             },
             // Soft Dark: our own low-contrast palette on the Studio layout. Muted violet-grey
             // surfaces (never near-black), softened off-white text and a periwinkle accent; the
@@ -661,6 +704,9 @@ impl Tokens {
                 caption_close: Color32::from_rgb(200, 72, 86),
                 caption_close_text: Color32::WHITE,
                 scrim: Color32::from_black_alpha(100),
+                glass: false,
+                glass_rim: Color32::TRANSPARENT,
+                glass_sheen: Color32::TRANSPARENT,
             },
             // Soft Light: pale violet-grey surfaces, softened dark-violet text (not black) and a
             // periwinkle accent, with the same generous radii as Soft Dark.
@@ -703,10 +749,80 @@ impl Tokens {
                 caption_close: Color32::from_rgb(200, 60, 72),
                 caption_close_text: Color32::WHITE,
                 scrim: Color32::from_black_alpha(90),
+                glass: false,
+                glass_rim: Color32::TRANSPARENT,
+                glass_sheen: Color32::TRANSPARENT,
             },
             // Ethan Schoonover's Solarized Dark palette: base03 canvas, base02 surfaces, base0
             // body text and the Solarized blue accent. https://ethanschoonover.com/solarized/
             // (MIT; see LICENSE-solarized.txt)
+            // Deep blue-black backdrop; `card` is translucent, so floating windows and the dock
+            // cards show the canvas through them. Text holds 4.5:1 even over a white image.
+            ThemeKind::Glass => Tokens {
+                kind,
+                chrome: Color32::from_rgb(13, 14, 21),
+                canvas: Color32::from_rgb(13, 14, 21),
+                canvas_dot: Color32::from_rgb(38, 41, 58),
+                dock: Color32::from_rgb(20, 22, 32),
+                card: Color32::from_rgba_unmultiplied(30, 32, 46, 224),
+                card_border: Color32::from_rgba_unmultiplied(255, 255, 255, 22),
+                field: Color32::from_rgb(40, 43, 60),
+                field_border: Color32::from_rgb(58, 62, 84),
+                hover: Color32::from_rgb(48, 51, 70),
+                pressed: Color32::from_rgb(60, 64, 86),
+                text: Color32::from_rgb(240, 241, 248),
+                text_dim: Color32::from_rgb(176, 179, 196),
+                text_faint: Color32::from_rgb(136, 140, 160),
+                icon: Color32::from_rgb(214, 217, 232),
+                accent: Color32::from_rgb(122, 140, 255),
+                accent_soft: Color32::from_rgba_unmultiplied(122, 140, 255, 52),
+                accent_border: Color32::from_rgba_unmultiplied(150, 165, 255, 130),
+                accent_text: Color32::from_rgb(204, 212, 255),
+                separator: Color32::from_rgb(44, 47, 64),
+                shadow: Color32::from_black_alpha(150),
+                primary_bg: Color32::from_rgb(240, 242, 255),
+                primary_text: Color32::from_rgb(13, 14, 21),
+                radius_sm: 8.0,
+                radius: 10.0,
+                radius_lg: 16.0,
+                histogram_bg: Color32::from_rgb(13, 14, 21),
+                glass: true,
+                glass_rim: Color32::from_rgba_unmultiplied(255, 255, 255, 30),
+                glass_sheen: Color32::from_rgba_unmultiplied(255, 255, 255, 14),
+                ..Tokens::for_kind(ThemeKind::Studio)
+            },
+            ThemeKind::GlassLight => Tokens {
+                kind,
+                chrome: Color32::from_rgb(220, 223, 234),
+                canvas: Color32::from_rgb(220, 223, 234),
+                canvas_dot: Color32::from_rgb(196, 200, 216),
+                dock: Color32::from_rgb(238, 240, 247),
+                card: Color32::from_rgba_unmultiplied(252, 252, 255, 222),
+                card_border: Color32::from_rgba_unmultiplied(20, 24, 48, 24),
+                field: Color32::from_rgb(244, 245, 250),
+                field_border: Color32::from_rgb(208, 212, 226),
+                hover: Color32::from_rgb(232, 234, 243),
+                pressed: Color32::from_rgb(220, 223, 235),
+                text: Color32::from_rgb(20, 22, 32),
+                text_dim: Color32::from_rgb(72, 76, 96),
+                text_faint: Color32::from_rgb(104, 108, 128),
+                icon: Color32::from_rgb(50, 54, 72),
+                accent: Color32::from_rgb(80, 92, 226),
+                accent_soft: Color32::from_rgba_unmultiplied(80, 92, 226, 40),
+                accent_border: Color32::from_rgba_unmultiplied(80, 92, 226, 120),
+                accent_text: Color32::from_rgb(56, 66, 196),
+                separator: Color32::from_rgb(214, 218, 230),
+                shadow: Color32::from_black_alpha(56),
+                primary_bg: Color32::from_rgb(20, 22, 32),
+                primary_text: Color32::from_rgb(250, 250, 255),
+                radius_sm: 8.0,
+                radius: 10.0,
+                radius_lg: 16.0,
+                glass: true,
+                glass_rim: Color32::from_rgba_unmultiplied(255, 255, 255, 190),
+                glass_sheen: Color32::from_rgba_unmultiplied(255, 255, 255, 110),
+                ..Tokens::for_kind(ThemeKind::StudioLight)
+            },
             ThemeKind::SolarizedDark => Tokens {
                 kind,
                 chrome: Color32::from_rgb(7, 54, 66),
@@ -746,6 +862,9 @@ impl Tokens {
                 caption_close: Color32::from_rgb(220, 50, 47),
                 caption_close_text: Color32::from_rgb(253, 246, 227),
                 scrim: Color32::from_black_alpha(110),
+                glass: false,
+                glass_rim: Color32::TRANSPARENT,
+                glass_sheen: Color32::TRANSPARENT,
             },
         }
     }
@@ -823,6 +942,7 @@ impl Tokens {
                 | ThemeKind::AdwaitaDark
                 | ThemeKind::BreezeDark
                 | ThemeKind::SoftDark
+                | ThemeKind::Glass
         )
     }
 }
@@ -977,10 +1097,14 @@ pub fn mono(size: f32) -> FontId {
 
 /// Apply a theme to egui's global style and publish its tokens.
 pub fn apply(ctx: &egui::Context, kind: ThemeKind) {
+    apply_tokens(ctx, Tokens::for_kind(kind));
+}
+
+/// [`apply`] with adjusted tokens (the adaptive accent tints a theme's own).
+pub fn apply_tokens(ctx: &egui::Context, t: Tokens) {
     // Keep native windows at SystemDefault so macOS continues reporting OS appearance changes,
     // including when an integration or restored egui state pinned its own theme preference.
     ctx.set_theme(egui::ThemePreference::System);
-    let t = Tokens::for_kind(kind);
     ctx.data_mut(|d| d.insert_temp(egui::Id::new("photocraft-theme"), t));
     let mut v = if t.dark() { Visuals::dark() } else { Visuals::light() };
     v.panel_fill = t.chrome;
@@ -995,8 +1119,13 @@ pub fn apply(ctx: &egui::Context, kind: ThemeKind) {
     v.error_fg_color = t.danger;
     v.window_corner_radius = CornerRadius::same(t.radius_lg as u8);
     v.menu_corner_radius = CornerRadius::same(t.radius as u8);
-    v.window_shadow = egui::Shadow { offset: [0, 10], blur: 32, spread: 0, color: t.shadow };
-    v.popup_shadow = egui::Shadow { offset: [0, 6], blur: 20, spread: 0, color: t.shadow };
+    // Glass surfaces float higher: a wider, softer shadow under windows and popups.
+    let (lift, blur) = if t.glass { (16, 48) } else { (10, 32) };
+    v.window_shadow = egui::Shadow { offset: [0, lift], blur, spread: 0, color: t.shadow };
+    v.popup_shadow = egui::Shadow { offset: [0, lift / 2 + 1], blur: blur * 5 / 8, spread: 0, color: t.shadow };
+    if t.glass {
+        v.window_stroke = Stroke::new(1.0, t.glass_rim);
+    }
     v.selection.bg_fill = if t.bevel || t.pro { t.accent } else { t.accent_soft };
     v.selection.stroke = Stroke::new(1.0, t.accent_text);
     v.slider_trailing_fill = true;
@@ -1382,6 +1511,44 @@ mod tests {
             assert!(contrast(t.caption_close_text, t.caption_close) >= 4.5, "{kind:?}: close button glyph");
         }
     }
+
+    #[test]
+    fn glass_themes_parse_float_and_hold_text_contrast_over_any_image() {
+        for (kind, alias) in [(ThemeKind::Glass, "Glass Dark"), (ThemeKind::GlassLight, "glass_light")] {
+            assert_eq!(ThemeKind::from_name(kind.id()), Some(kind));
+            assert_eq!(ThemeKind::from_name(kind.label()), Some(kind));
+            assert_eq!(ThemeKind::from_name(alias), Some(kind));
+            assert!(ThemeKind::ALL.contains(&kind));
+            let t = Tokens::for_kind(kind);
+            assert_eq!(t.dark(), kind == ThemeKind::Glass);
+            assert!(t.glass && !t.pro && !t.bevel, "{kind:?} floats Studio-layout islands");
+            assert!(t.card.a() < 255 && t.card.a() >= 200, "{kind:?}: translucent but readable cards");
+            // The chrome (title bar) is the backdrop, so the islands float over one surface.
+            assert_eq!(t.chrome, t.canvas);
+            // Glass cards are translucent: hold AA text on them over the backdrop and over the
+            // brightest and darkest image pixels a floating window can sit on.
+            let over = |c: Color32, under: Color32| {
+                let [r, g, b, a] = c.to_srgba_unmultiplied();
+                let k = f32::from(a) / 255.0;
+                let ch = |o: u8, u: u8| (f32::from(o) * k + f32::from(u) * (1.0 - k)).round() as u8;
+                Color32::from_rgb(ch(r, under.r()), ch(g, under.g()), ch(b, under.b()))
+            };
+            for under in [t.canvas, Color32::WHITE, Color32::BLACK] {
+                let card = over(t.card, under);
+                for (name, colour, floor) in [("text", t.text, 7.0), ("dim", t.text_dim, 4.5), ("accent text", t.accent_text, 4.5), ("faint", t.text_faint, 3.0)] {
+                    assert!(contrast(colour, card) >= floor, "{kind:?}: {name} on card over {under:?}");
+                }
+            }
+            for surface in [t.chrome, t.dock, t.field, t.hover, t.pressed] {
+                assert!(contrast(t.text, surface) >= 7.0 && contrast(t.text_dim, surface) >= 4.5, "{kind:?}: text on {surface:?}");
+            }
+            for k in [1.0, 0.93, 0.85] {
+                assert!(contrast(t.primary_text, t.primary_bg.gamma_multiply(k)) >= 4.5, "{kind:?}: primary at {k}");
+            }
+            // Other themes don't float.
+            assert!(ThemeKind::ALL.iter().filter(|k| Tokens::for_kind(**k).glass).count() == 2);
+        }
+    }
 }
 
 /// Development feature: live design-token overrides.
@@ -1498,7 +1665,9 @@ pub mod live {
                 warning,
                 tab_strip,
                 row_selected,
-                scrim
+                scrim,
+                glass_rim,
+                glass_sheen
             );
         }
         unknown

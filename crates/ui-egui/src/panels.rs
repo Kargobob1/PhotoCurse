@@ -85,11 +85,15 @@ pub fn toolbar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     // Two columns when the header chevron asks for them; a column that doesn't fit scrolls.
     let double = app.ui.panels.toolbar_double;
     let w = if double { w1 + bx + 2.0 } else { w1 };
+    let inner = egui::Margin::symmetric(m, 8);
+    let gap = widgets::GLASS_GAP;
     crate::direction::start_panel("toolbar")
         .resizable(false)
-        .exact_size(w)
-        .frame(egui::Frame::NONE.fill(t.chrome).inner_margin(egui::Margin::symmetric(m, 8)))
+        .exact_size(w + widgets::chrome_gap(&t, 2))
+        .show_separator_line(!t.glass)
+        .frame(widgets::chrome_frame(&t, inner, egui::Margin { left: gap, right: gap, top: 0, bottom: gap }))
         .show(ui, |ui| {
+            widgets::glass_sheen_panel(ui, inner);
             if t.pro {
                 // Photoshop's toolbar header chevrons switch between one and two columns.
                 let (cr, resp) = ui.allocate_exact_size(vec2(bx, 14.0), Sense::click());
@@ -104,7 +108,7 @@ pub fn toolbar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
             }
             // Subtle violet wash at the bottom of the toolbar.
             let full = ui.max_rect();
-            if !t.bevel && !t.pro && t.dark() {
+            if !t.bevel && !t.pro && !t.glass && t.dark() {
                 let mut mesh = egui::Mesh::default();
                 let r = Rect::from_min_max(pos2(full.left() - 7.0, full.bottom() - 260.0), pos2(full.right() + 7.0, full.bottom() + 8.0));
                 let top = Color32::TRANSPARENT;
@@ -578,6 +582,7 @@ pub fn title_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let right = if caption_right > 0.0 { 0 } else { 10 };
     let bar = egui::Panel::top("title_bar")
         .exact_size(crate::titlebar::bar_height(app, ui.ctx(), if t.pro { 32.0 } else { 38.0 }))
+        .show_separator_line(!t.glass)
         .frame(egui::Frame::NONE.fill(t.chrome).inner_margin(egui::Margin { left, right, top: 0, bottom: 0 }))
         .show(ui, |ui| {
             let full = ui.max_rect();
@@ -902,10 +907,14 @@ fn options_bar_height(pro: bool, narrow: bool) -> f32 {
 pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let narrow = app.session.prefs().workspace.narrow_options_bar();
+    let inner = egui::Margin::symmetric(10, 0);
+    let gap = widgets::GLASS_GAP;
     egui::Panel::top("options_bar")
-        .exact_size(options_bar_height(t.pro, narrow))
-        .frame(egui::Frame::NONE.fill(t.chrome).inner_margin(egui::Margin::symmetric(10, 0)))
+        .exact_size(options_bar_height(t.pro, narrow) + widgets::chrome_gap(&t, 1))
+        .show_separator_line(!t.glass)
+        .frame(widgets::chrome_frame(&t, inner, egui::Margin { left: gap, right: gap, top: 0, bottom: gap }))
         .show(ui, |ui| {
+            widgets::glass_sheen_panel(ui, inner);
             ui.style_mut().spacing.scroll = egui::style::ScrollStyle { bar_width: 4.0, ..egui::style::ScrollStyle::floating() };
             egui::ScrollArea::horizontal().id_salt("tool-options").auto_shrink([false, false]).show(ui, |ui| {
             // Font ink can extend beyond its advance width at fractional positions.
@@ -1580,10 +1589,14 @@ pub fn status_bar_heights(t: &Tokens) -> (f32, f32) {
 
 pub fn status_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
+    let inner = egui::Margin::symmetric(10, 0);
+    let gap = widgets::GLASS_GAP;
     egui::Panel::bottom("status_bar")
-        .exact_size(status_bar_heights(&t).0)
-        .frame(egui::Frame::NONE.fill(t.chrome).inner_margin(egui::Margin::symmetric(10, 0)))
+        .exact_size(status_bar_heights(&t).0 + widgets::chrome_gap(&t, 1))
+        .show_separator_line(!t.glass)
+        .frame(widgets::chrome_frame(&t, inner, egui::Margin { left: gap, right: gap, top: 0, bottom: gap }))
         .show(ui, |ui| {
+            widgets::glass_sheen_panel(ui, inner);
             let control_h = status_bar_heights(&t).1;
             // Read from the right in a right-to-left UI, with the trailing group at the left.
             crate::direction::horizontal_centered(ui, |ui| {
@@ -1651,15 +1664,23 @@ pub fn right_dock(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     // Narrow icon rail, unless an embedding app hides it: shows, expands or collapses panel groups.
     if p.rail {
         let (rw, rb) = if t.pro { (36.0, 28.0) } else { (44.0, 32.0) };
+        let inner = egui::Margin::symmetric(4, 8);
+        let gap = widgets::GLASS_GAP;
+        // Glass: the window edge gets the gap; the dock's own margin keeps the canvas side apart.
+        let outer = if crate::direction::is_rtl() { egui::Margin { left: gap, right: 0, top: 0, bottom: gap } } else { egui::Margin { left: 0, right: gap, top: 0, bottom: gap } };
         crate::direction::end_panel("rail")
             .resizable(false)
-            .exact_size(rw)
-            .frame(egui::Frame::NONE.fill(t.chrome).inner_margin(egui::Margin::symmetric(4, 8)))
+            .exact_size(rw + widgets::chrome_gap(&t, 1))
+            .show_separator_line(!t.glass)
+            .frame(widgets::chrome_frame(&t, inner, outer))
             .show(ui, |ui| {
-                // The separator is on the canvas side.
+                widgets::glass_sheen_panel(ui, inner);
+                // The separator is on the canvas side (glass islands are apart already).
                 let r = ui.max_rect();
                 let x = if crate::direction::is_rtl() { r.right() + 6.0 } else { r.left() - 6.0 };
-                ui.painter().line_segment([pos2(x, r.top() - 8.0), pos2(x, r.bottom() + 8.0)], Stroke::new(1.0, t.separator));
+                if !t.glass {
+                    ui.painter().line_segment([pos2(x, r.top() - 8.0), pos2(x, r.bottom() + 8.0)], Stroke::new(1.0, t.separator));
+                }
                 ui.spacing_mut().item_spacing.y = 4.0;
                 use crate::dock::Group;
                 let entries: [(&str, &str, Group); 5] = [
@@ -1720,11 +1741,13 @@ fn dock_panels(app: &mut PhotocraftApp, ui: &mut egui::Ui, p: &crate::state::Pan
         return;
     }
     let margin = if t.pro { 2 } else { 8 };
-    let mut panel = crate::direction::end_panel("dock").resizable(true).default_size(if t.pro { 290.0 } else { 300.0 }).size_range(DOCK_WIDTH);
+    let mut panel = crate::direction::end_panel("dock").show_separator_line(!t.glass).resizable(true).default_size(if t.pro { 290.0 } else { 300.0 }).size_range(DOCK_WIDTH);
     if let Some(w) = ui.ctx().data_mut(|d| d.remove_temp::<f32>(dock_width_id())) {
         panel = panel.exact_size(w);
     }
-    panel.frame(egui::Frame::NONE.fill(t.dock).inner_margin(egui::Margin::same(margin))).show(ui, |ui| {
+    // Glass: no dock surface, the cards float over the backdrop as islands.
+    let fill = if t.glass { Color32::TRANSPARENT } else { t.dock };
+    panel.frame(egui::Frame::NONE.fill(fill).inner_margin(egui::Margin { top: if t.glass { 0 } else { margin }, ..egui::Margin::same(margin) })).show(ui, |ui| {
         // Groups keep their heights whatever they show (#88): see `dock`.
         crate::dock::show(app, ui, &shown, dock_body);
     });

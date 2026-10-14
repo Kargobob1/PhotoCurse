@@ -91,6 +91,9 @@ pub const UI_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("window.theme.breezeDark", "Breeze Dark Theme", &["Window", "Theme"], None),
     ("window.theme.softLight", "Soft Light Theme", &["Window", "Theme"], None),
     ("window.theme.softDark", "Soft Dark Theme", &["Window", "Theme"], None),
+    ("window.theme.glass", "Glass Dark Theme", &["Window", "Theme"], None),
+    ("window.theme.glassLight", "Glass Light Theme", &["Window", "Theme"], None),
+    ("window.adaptiveAccent", "Adaptive Accent Color", &["Window", "Theme"], None),
     ("window.theme.system", "Sync with system", &["Window", "Theme"], None),
     ("edit.search", "Search…", &["Edit"], Some("Cmd+F")),
     ("help.discord", "Discord: execurse2", &["Help"], None),
@@ -388,10 +391,18 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
         | "window.theme.breezeLight"
         | "window.theme.breezeDark"
         | "window.theme.softLight"
-        | "window.theme.softDark" => {
+        | "window.theme.softDark"
+        | "window.theme.glass"
+        | "window.theme.glassLight" => {
             let k = crate::theme::ThemeKind::from_name(&id["window.theme.".len()..]).unwrap_or_default();
             app.set_theme(ctx, k);
             Ok(Value::Null)
+        }
+        // Tint the accent with the active document's dominant hue (`adaptive_accent`).
+        "window.adaptiveAccent" => {
+            let on = !app.session.prefs().interface.adaptive_accent;
+            app.run("prefs.set", json!({"path": "interface.adaptiveAccent", "value": on}))?;
+            Ok(json!({"adaptiveAccent": on}))
         }
         // The macOS app menu's Language (`native_menu::language_node`).
         i if i.starts_with(crate::native_menu::LANGUAGE_PREFIX) => {
@@ -804,6 +815,9 @@ fn checked(app: &PhotocraftApp, id: &str) -> Option<bool> {
     if let Some(name) = id.strip_prefix("window.theme.").filter(|n| *n != "toggle") {
         let auto = app.session.prefs().interface.appearance_mode == photocraft_engine::prefs::AppearanceMode::Auto;
         return Some(if name == "system" { auto } else { !auto && crate::theme::ThemeKind::from_name(name) == Some(app.ui.theme) });
+    }
+    if id == "window.adaptiveAccent" {
+        return Some(app.session.prefs().interface.adaptive_accent);
     }
     if let Some(c) = crate::view_cmds::checked(app, id) {
         return Some(c);

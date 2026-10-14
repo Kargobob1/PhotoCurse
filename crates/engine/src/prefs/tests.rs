@@ -477,6 +477,36 @@ fn gpu_backend_round_trips_and_validates() {
     }
 }
 
+/// Glass themes and the adaptive accent: defaults, round-trip, theme slots and bad values.
+#[test]
+fn glass_theme_and_adaptive_accent_preferences() {
+    let p = Preferences::default();
+    assert!(!p.interface.adaptive_accent && p.interface.glass_auto_hide);
+
+    let mut s = Session::new();
+    s.execute("prefs.set", json!({"path": "interface.adaptiveAccent", "value": true})).unwrap();
+    s.execute("prefs.set", json!({"path": "interface.glassAutoHide", "value": false})).unwrap();
+    assert!(s.execute("prefs.set", json!({"path": "interface.adaptiveAccent", "value": "yes"})).is_err());
+    assert!(s.prefs().interface.adaptive_accent && !s.prefs().interface.glass_auto_hide);
+    // The legacy single theme picks the matching slot and appearance mode.
+    s.execute("prefs.set", json!({"path": "interface.theme", "value": "glassLight"})).unwrap();
+    assert_eq!(s.prefs().interface.light_theme, LightTheme::GlassLight);
+    assert_eq!(s.prefs().interface.appearance_mode, AppearanceMode::Light);
+    s.execute("prefs.set", json!({"path": "interface.theme", "value": "glass"})).unwrap();
+    assert_eq!(s.prefs().interface.dark_theme, DarkTheme::Glass);
+    assert_eq!(s.prefs().interface.appearance_mode, AppearanceMode::Dark);
+
+    let mut t = Session::new();
+    t.load_prefs_json(&s.prefs_to_json()).unwrap();
+    assert!(t.prefs().interface.adaptive_accent && !t.prefs().interface.glass_auto_hide);
+    assert_eq!(t.prefs().interface.dark_theme, DarkTheme::Glass);
+    // A saved single Glass theme from before appearance modes migrates to its family.
+    let mut u = Session::new();
+    u.load_prefs_json(r#"{"interface": {"theme": "glassLight"}}"#).unwrap();
+    assert_eq!((u.prefs().interface.appearance_mode, u.prefs().interface.light_theme), (AppearanceMode::Light, LightTheme::GlassLight));
+    assert!(!u.prefs().interface.adaptive_accent && u.prefs().interface.glass_auto_hide);
+}
+
 /// #2022: notices auto-hide after a user-set delay by default; both settings round-trip.
 #[test]
 fn notification_autohide_preferences() {

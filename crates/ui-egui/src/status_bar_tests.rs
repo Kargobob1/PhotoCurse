@@ -44,7 +44,9 @@ fn status_bar_controls_sit_inside_the_bar_with_even_margins() {
         let margin = (bar_h - control_h) / 2.0;
         assert!(margin >= 3.0, "{kind:?}: margin {margin}");
         let bottom = h.ctx.data(|d| d.get_temp::<f32>(bottom_id())).unwrap();
-        let bar = Rect::from_min_max(pos2(0.0, bottom - bar_h), pos2(SIZE.x, bottom));
+        // Glass themes inset the bar by the island gap from the window's sides and bottom.
+        let gap = crate::widgets::chrome_gap(&t, 1);
+        let bar = Rect::from_min_max(pos2(gap, bottom - gap - bar_h), pos2(SIZE.x - gap, bottom - gap));
         // Half a point of slack for egui's pixel rounding of the centred row.
         let inner = bar.shrink2(vec2(margin, margin - 0.5));
         // The zoom number (its box is painted around it, `control_h` tall and centred).

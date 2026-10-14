@@ -2600,13 +2600,19 @@ fn dots(ctx: &egui::Context, t: &crate::theme::Tokens) -> Option<egui::TextureId
     Some(id)
 }
 
-fn paint_dots(ui: &egui::Ui, rect: Rect, enabled: bool) {
+pub(crate) fn paint_dots(ui: &egui::Ui, rect: Rect, enabled: bool) {
     if !enabled {
         return;
     }
     let t = crate::theme::Tokens::get(ui.ctx());
     if let Some(id) = dots(ui.ctx(), &t) {
-        let uv = Rect::from_min_max(Pos2::ZERO, pos2(rect.width() / 22.0, rect.height() / 22.0));
+        // Glass themes paint the pattern under the whole window too, so it is anchored to the
+        // window rather than to each area and runs on seamlessly between the islands.
+        let uv = if t.glass {
+            Rect::from_min_max(pos2(rect.left() / 22.0, rect.top() / 22.0), pos2(rect.right() / 22.0, rect.bottom() / 22.0))
+        } else {
+            Rect::from_min_max(Pos2::ZERO, pos2(rect.width() / 22.0, rect.height() / 22.0))
+        };
         ui.painter_at(rect).image(id, rect, uv, Color32::WHITE);
     }
 }
